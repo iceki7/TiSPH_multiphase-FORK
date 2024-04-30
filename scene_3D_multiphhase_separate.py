@@ -5,11 +5,48 @@ import time
 import sys
 import numpy as np
 import csv
+
+from ti_sph.basic_data_generator.PLY_data import PLY_data
+from ti_sph.basic_data_generator.ply_util import write_ply
+
+
+#prm_
+rigidname=r"D:\CODE\dataProcessing\rigidx.ply"
+rigidname=r"d:\CODE\Tichi_SPH\ply_models\bunny_0.05.ply"
+# rigidname=r"D:\CODE\dataProcessing\propeller.ply"
+
+
+
+prm_large=0
+prm_vis=1
+prm_rigidmodel=1
+prm_exportPath=r"./output/"
+# prm_exportPath=r"/w/TiSPH_multiphase/output/"
+
+
+model1=PLY_data(
+    ply_filename=rigidname,
+    offset=ti.Vector([0,0,0]))
+
+print("[model part num]\t"+str(model1.pos.shape))
+
+
+if(prm_rigidmodel):
+    rigid1=model1
+    rigid_pos=rigid1.pos
+
+
+
 np.set_printoptions(threshold=sys.maxsize)
 
 ''' TAICHI SETTINGS '''
 # Use GPU, comment the below command to run this programme on CPU
-ti.init(arch=ti.cuda, device_memory_GB=3) 
+if(prm_large):
+    ti.init(arch=ti.cuda, device_memory_fraction=0.9) 
+else:
+    ti.init(arch=ti.cuda, device_memory_GB=3) 
+
+
 # Use CPU, uncomment the below command to run this programme if you don't have GPU
 # ti.init(arch=ti.cpu) 
 
@@ -21,12 +58,18 @@ solver = SOLVER_ISM # choose the solver
 ''' SETTINGS OUTPUT DATA '''
 # output fps
 fps = 60
+
+#prm_
 # max output frame number
-output_frame_num = 2000
+output_frame_num = 100
 
 ''' SETTINGS SIMULATION '''
 # size of the particle
 part_size = 0.05 
+part_size = 0.037
+part_size = 0.15    
+#prm_
+
 # number of phases
 phase_num = 3 
 # max time step size
@@ -59,11 +102,22 @@ world.set_multiphase(phase_num,[vec3f(0.8,0.2,0),vec3f(0,0.8,0.2),vec3f(0,0,1)],
 pool_data = Squared_pool_3D_data(container_height=3, container_size=4, fluid_height=2, span=world.g_part_size[None], layer = 3)
 # particle number of fluid/boundary
 fluid_part_num = pool_data.fluid_part_num
+# fluid_part_num =rigid1.num
 bound_part_num = pool_data.bound_part_num
+if(prm_rigidmodel):
+    rigid_part_num=rigid1.num
 print("fluid_part_num", fluid_part_num)
 # position info of fluid/boundary (as numpy arrays)
 fluid_part_pos = pool_data.fluid_part_pos
+# fluid_part_pos = rigid1.pos
+
+# print(fluid_part_pos.dtype)
+# print(fluid_part_pos.shape)#fluidpartnum x 3
+# exit(0)
+
 bound_part_pos = pool_data.bound_part_pos
+if(prm_rigidmodel):
+    rigid_part_pos=rigid_pos
 # initial velocity info of fluid
 
 '''INIT AN FLUID PARTICLE OBJECT'''
@@ -73,6 +127,8 @@ fluid_part.instantiate_from_template(part_template, world)
 
 ''' FEED DATA TO THE FLUID PARTICLE OBJECT '''
 fluid_part.open_stack(val_i(fluid_part_num)) # open the stack to feed data
+# fluid_part.open_stack(val_i(rigid_part_num)) # open the stack to feed data
+
 fluid_part.fill_open_stack_with_nparr(fluid_part.pos, fluid_part_pos) # feed the position data
 fluid_part.fill_open_stack_with_val(fluid_part.size, fluid_part.get_part_size()) # feed the particle size
 fluid_part.fill_open_stack_with_val(fluid_part.volume, val_f(fluid_part.get_part_size()[None]**world.g_dim[None])) # feed the particle volume
@@ -84,6 +140,10 @@ fluid_part.close_stack() # close the stack
 ''' INIT A BOUNDARY PARTICLE OBJECT '''
 bound_part = world.add_part_obj(part_num=bound_part_num, size=world.g_part_size, is_dynamic=False)
 bound_part.instantiate_from_template(part_template, world)
+if(prm_rigidmodel):
+    rigid_part = world.add_part_obj(part_num=rigid_part_num, size=world.g_part_size, is_dynamic=False)
+    rigid_part.instantiate_from_template(part_template, world)
+
 
 ''' FEED DATA TO THE BOUNDARY PARTICLE OBJECT '''
 bound_part.open_stack(val_i(bound_part_num))
@@ -93,12 +153,23 @@ bound_part.fill_open_stack_with_val(bound_part.volume, val_f(bound_part.get_part
 bound_part.fill_open_stack_with_val(bound_part.mass, val_f(1000*bound_part.get_part_size()[None]**world.g_dim[None]))
 bound_part.fill_open_stack_with_val(bound_part.rest_density, val_f(1000))
 bound_part.close_stack()
+if(prm_rigidmodel):
+    rigid_part.open_stack(val_i(rigid_part_num))
+    rigid_part.fill_open_stack_with_nparr(rigid_part.pos,rigid_part_pos)
+    rigid_part.fill_open_stack_with_val(rigid_part.size, rigid_part.get_part_size())
+    rigid_part.fill_open_stack_with_val(rigid_part.volume, val_f(rigid_part.get_part_size()[None]**world.g_dim[None]))
+    rigid_part.fill_open_stack_with_val(rigid_part.mass, val_f(1000*rigid_part.get_part_size()[None]**world.g_dim[None]))
+    rigid_part.fill_open_stack_with_val(rigid_part.rest_density, val_f(1000))
+    rigid_part.close_stack()
 
 
 '''INIT NEIGHBOR SEARCH OBJECTS'''
 neighb_list=[fluid_part, bound_part]
 fluid_part.add_module_neighb_search()
 bound_part.add_module_neighb_search()
+if(prm_rigidmodel):
+    rigid_part.add_module_neighb_search()
+    rigid_part.add_neighb_objs(neighb_list)
 
 fluid_part.add_neighb_objs(neighb_list)
 bound_part.add_neighb_objs(neighb_list)
@@ -113,12 +184,20 @@ elif solver == SOLVER_JL21:
     fluid_part.add_solver_JL21(kd=kd,Cf=Cf,k_vis=kinematic_viscosity_fluid)
 
 bound_part.add_solver_sph()
+if(prm_rigidmodel):
+    rigid_part.add_solver_sph()
 if solver == SOLVER_ISM:
     bound_part.add_solver_df(div_free_threshold=2e-4)
     bound_part.add_solver_ism(Cd=Cd, Cf=Cf, k_vis_inter=kinematic_viscosity_fluid, k_vis_inner=kinematic_viscosity_fluid)
+    if(prm_rigidmodel):
+        rigid_part.add_solver_df(div_free_threshold=2e-4)
+        rigid_part.add_solver_ism(Cd=Cd, Cf=Cf, k_vis_inter=kinematic_viscosity_fluid, k_vis_inner=kinematic_viscosity_fluid)
 elif solver == SOLVER_JL21:
     bound_part.add_solver_wcsph()
     bound_part.add_solver_JL21(kd=kd,Cf=Cf,k_vis=kinematic_viscosity_fluid)
+    if(prm_rigidmodel):
+        rigid_part.add_solver_wcsph()
+        rigid_part.add_solver_JL21(kd=kd,Cf=Cf,k_vis=kinematic_viscosity_fluid)
 
 ''' INIT ALL SOLVERS '''
 world.init_modules()
@@ -279,6 +358,71 @@ def loop_JL21():
     # world.cfl_dt(0.4, max_time_step) 
 
 ''' Viusalization and run '''
+def novis_run(loop):
+    global flag_strat_drift
+    inv_fps = 1/fps
+    timer = 0
+    sim_time = 0
+    loop_count = 0
+    flag_write_img = False
+
+    # gui = Gui3d()
+    while True:#gui.window.running:
+
+        #gui.monitor_listen()
+
+        if True:#gui.op_system_run:
+            loop()
+            loop_count += 1
+            sim_time += world.g_dt[None]
+            
+            if(sim_time > timer*inv_fps):#为满足FPS，定时输出，flag为真时即要输出
+                # if gui.op_write_file:
+                #     pass
+                timer += 1
+                flag_write_img = True
+        if True:#gui.op_refresh_window:
+            # gui.scene_setup()
+            # gui.scene_add_parts_colorful(obj_pos=fluid_part.pos, obj_color=fluid_part.rgb,index_count=fluid_part.get_stack_top()[None],size=world.g_part_size[None])
+            # gui.scene_add_parts(obj_pos=bound_part.pos, obj_color=(0,0.5,1),index_count=bound_part.get_stack_top()[None],size=world.g_part_size[None])
+            # if(prm_rigidmodel):
+            #     gui.scene_add_parts(obj_pos=rigid_part.pos, obj_color=(0,0.5,1),index_count=bound_part.get_stack_top()[None],size=world.g_part_size[None])
+            # gui.canvas.scene(gui.scene)  # Render the scenet
+
+            # if gui.op_save_img and flag_write_img:
+            if flag_write_img:
+                # gui.window.save_image(prm_exportPath+str(timer)+'.png')
+                flag_write_img = False
+                write_ply(
+                    path=prm_exportPath,
+                    frame_num=timer,
+                    type="fluid",
+                    dim=3,
+                    num=fluid_part_num,
+                    pos=world.part_obj_list[0].pos.to_numpy(),
+                    phase_num=3,
+                    volume_frac=world.part_obj_list[0].phase.val_frac
+                    # solid_beta=np.zeros_like(rigid_pos)
+                    )
+                
+                # write_ply(path=r"D:\CODE\dataProcessing\\rigid_pos",
+                #         frame_num=999,
+                #         type="solid",
+                #         dim=3,
+                #         num=rigid1.num,
+                #         pos=rigid_pos,
+                #         phase_num=1,
+                #         solid_beta=np.zeros_like(rigid_pos)
+                #         )
+
+            # print(world.part_obj_list[0].pos.shape)#fluid
+            # print(world.part_obj_list[1].pos.shape)#rigid_pos
+
+            # gui.window.show()
+        
+        if timer > output_frame_num:
+            break
+
 def vis_run(loop):
     global flag_strat_drift
     inv_fps = 1/fps
@@ -306,11 +450,38 @@ def vis_run(loop):
             gui.scene_setup()
             gui.scene_add_parts_colorful(obj_pos=fluid_part.pos, obj_color=fluid_part.rgb,index_count=fluid_part.get_stack_top()[None],size=world.g_part_size[None])
             # gui.scene_add_parts(obj_pos=bound_part.pos, obj_color=(0,0.5,1),index_count=bound_part.get_stack_top()[None],size=world.g_part_size[None])
+            if(prm_rigidmodel):
+                gui.scene_add_parts(obj_pos=rigid_part.pos, obj_color=(0,0.5,1),index_count=bound_part.get_stack_top()[None],size=world.g_part_size[None])
             gui.canvas.scene(gui.scene)  # Render the scene
 
-            if gui.op_save_img and flag_write_img:
-                gui.window.save_image('output/'+str(timer)+'.png')
+            # if gui.op_save_img and flag_write_img:
+            if flag_write_img:
+                gui.window.save_image(prm_exportPath+str(timer)+'.png')
                 flag_write_img = False
+                write_ply(
+                    path=prm_exportPath,
+                    frame_num=timer,
+                    type="fluid",
+                    dim=3,
+                    num=fluid_part_num,
+                    pos=world.part_obj_list[0].pos.to_numpy(),
+                    phase_num=3,
+                    volume_frac=world.part_obj_list[0].phase.val_frac
+                    # solid_beta=np.zeros_like(rigid_pos)
+                    )
+                
+                # write_ply(path=r"D:\CODE\dataProcessing\\rigid_pos",
+                #         frame_num=999,
+                #         type="solid",
+                #         dim=3,
+                #         num=rigid1.num,
+                #         pos=rigid_pos,
+                #         phase_num=1,
+                #         solid_beta=np.zeros_like(rigid_pos)
+                #         )
+
+            # print(world.part_obj_list[0].pos.shape)#fluid
+            # print(world.part_obj_list[1].pos.shape)#rigid_pos
 
             gui.window.show()
         
@@ -320,10 +491,18 @@ def vis_run(loop):
 ''' RUN THE SIMULATION '''
 if solver == SOLVER_ISM:
     prep_ism()
-    vis_run(loop_ism)
+    if(prm_vis):
+        vis_run(loop_ism)
+    else:
+        novis_run(loop_ism)
+
 elif solver == SOLVER_JL21:
     prep_JL21()
-    vis_run(loop_JL21)
+    if(prm_vis):
+        vis_run(loop_JL21)
+    else:
+        novis_run(loop_JL21)
+
 
 
 
