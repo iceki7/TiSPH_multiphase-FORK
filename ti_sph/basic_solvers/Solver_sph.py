@@ -20,6 +20,8 @@ class SPH_solver:
     @ti.kernel
     def loop_neighb(self, neighb_pool:ti.template(), neighb_obj:ti.template(), func:ti.template()):
         for part_id in range(self.obj.ti_get_stack_top()[None]):
+            if self.obj.state[part_id]>1:
+                continue
             neighb_part_num = neighb_pool.neighb_obj_pointer[part_id, neighb_obj.ti_get_id()[None]].size
             neighb_part_shift = neighb_pool.neighb_obj_pointer[part_id, neighb_obj.ti_get_id()[None]].begin
             for neighb_part_iter in range(neighb_part_num):
@@ -93,3 +95,33 @@ class SPH_solver:
         for neighb_obj in neighb_pool.neighb_obj_list:
             ''' Compute Average Velocity '''
             self.loop_neighb(neighb_pool, neighb_obj, self.inloop_avg_velocity)
+
+    @ti.kernel
+    def set_dead_particle(self):
+        for part_id in range(self.obj.ti_get_stack_top()[None]): 
+            if self.obj.state[part_id]==0:
+                self.obj.pos[part_id] += ti.Vector([-8, -8, -8])
+                self.obj.vel[part_id] *= 0
+                self.obj.acc[part_id] *= 0
+
+    @ti.kernel
+    def adjust_emitted_particle(self,emitting_time:ti.i32):
+        for part_id in range(self.obj.ti_get_stack_top()[None]): 
+            if self.obj.state[part_id]>1 and self.obj.state[part_id]<emitting_time:
+                #无敌状态时间计时+1
+                self.obj.state[part_id]+=1
+            if self.obj.state[part_id]>=emitting_time:
+                self.obj.state[part_id]=1 #无敌状态结束，变为普通活跃粒子
+
+    @ti.kernel
+    def emit_particle_from_array(self, positions:ti.template(),init_vel:ti.template(), emit_indices: ti.types.ndarray()):
+        for i in range(emit_indices.shape[0]):
+            part_id = emit_indices[i]
+            if self.obj.state[part_id] == 0:
+                # 发射粒子
+                self.obj.state[part_id]=2 # 设置为发射状态（此时不会和边界发生碰撞）
+                # 设置粒子的位置为输入位置数组中的相应位置
+                self.obj.pos[part_id] = positions[i]
+                # 这里可以根据需求设置粒子的速度
+                for phase_id in range( self.obj.m_world.g_phase_num[None]):
+                    self.obj.phase.vel[part_id, phase_id] = init_vel

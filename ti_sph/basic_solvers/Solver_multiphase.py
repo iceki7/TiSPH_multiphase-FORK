@@ -31,6 +31,8 @@ class Multiphase_solver(SPH_solver):
     @ti.kernel
     def add_phase_acc_gravity(self):
         for part_id in range(self.obj.ti_get_stack_top()[None]):
+            if self.obj.state[part_id]==0:
+                continue
             for phase_id in range(self.phase_num[None]):
                 self.obj.phase.acc[part_id, phase_id] += self.world.g_gravity[None]
                 

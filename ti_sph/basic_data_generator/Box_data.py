@@ -15,7 +15,7 @@ class Box_data(Data_generator):
         self.num = self.pushed_num_preview(span)
         pos_data = ti.Vector.field(self.dim, dtype=ti.f32, shape=self.num)
         self.generate_pos(pos_data)
-        self.pos = pos_data
+        self.pos = pos_data.to_numpy()
 
     @ti.kernel
     def pushed_num_preview(self, span: ti.f32) -> ti.i32:
