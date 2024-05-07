@@ -99,7 +99,7 @@ class SPH_solver:
     @ti.kernel
     def set_dead_particle(self):
         for part_id in range(self.obj.ti_get_stack_top()[None]): 
-            if self.obj.state[part_id]==0:
+            if self.obj.state[part_id]==1:
                 self.obj.pos[part_id] += ti.Vector([-8, -8, -8])
                 self.obj.vel[part_id] *= 0
                 self.obj.acc[part_id] *= 0
@@ -111,13 +111,13 @@ class SPH_solver:
                 #无敌状态时间计时+1
                 self.obj.state[part_id]+=1
             if self.obj.state[part_id]>=emitting_time:
-                self.obj.state[part_id]=1 #无敌状态结束，变为普通活跃粒子
+                self.obj.state[part_id]=0 #无敌状态结束，变为普通活跃粒子
 
     @ti.kernel
     def emit_particle_from_array(self, positions:ti.template(),init_vel:ti.template(), emit_indices: ti.types.ndarray()):
         for i in range(emit_indices.shape[0]):
             part_id = emit_indices[i]
-            if self.obj.state[part_id] == 0:
+            if self.obj.state[part_id] == 1:
                 # 发射粒子
                 self.obj.state[part_id]=2 # 设置为发射状态（此时不会和边界发生碰撞）
                 # 设置粒子的位置为输入位置数组中的相应位置

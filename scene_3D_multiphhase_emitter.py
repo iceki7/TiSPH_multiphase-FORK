@@ -162,7 +162,7 @@ fluid_part.fill_open_stack_with_val(fluid_part.volume, val_f(fluid_part.get_part
 val_frac = ti.field(dtype=ti.f32, shape=phase_num) # create a field to store the volume fraction
 val_frac[0], val_frac[1], val_frac[2] = 0.5,0.0,0.5 # set up the volume fraction
 fluid_part.fill_open_stack_with_vals(fluid_part.phase.val_frac, val_frac) # feed the volume fraction
-init_state= val_i(0)
+init_state= val_i(1)
 fluid_part.fill_open_stack_with_val(fluid_part.state, init_state)#set dead
 fluid_part.close_stack() # close the stack
 
