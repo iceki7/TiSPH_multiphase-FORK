@@ -12,15 +12,17 @@ from ti_sph.basic_data_generator.ply_util import write_ply
 
 #prm_
 rigidname=r"D:\CODE\dataProcessing\rigidx.ply"
-rigidname=r"d:\CODE\Tichi_SPH\ply_models\bunny_0.05.ply"
-# rigidname=r"D:\CODE\dataProcessing\propeller.ply"
+# rigidname=r"d:\CODE\Tichi_SPH\ply_models\bunny_0.05.ply"
+rigidname=r"D:\CODE\dataProcessing\propeller.ply"
 
 
 
 prm_large=0
 prm_vis=1
-prm_rigidmodel=1
+prm_rigidmodel=0
+prm_fluidmodel=0
 prm_exportPath=r"./output/"
+prm_export=0
 # prm_exportPath=r"/w/TiSPH_multiphase/output/"
 
 
@@ -102,14 +104,16 @@ world.set_multiphase(phase_num,[vec3f(0.8,0.2,0),vec3f(0,0.8,0.2),vec3f(0,0,1)],
 pool_data = Squared_pool_3D_data(container_height=3, container_size=4, fluid_height=2, span=world.g_part_size[None], layer = 3)
 # particle number of fluid/boundary
 fluid_part_num = pool_data.fluid_part_num
-# fluid_part_num =rigid1.num
+if(prm_fluidmodel):
+    fluid_part_num =model1.num
 bound_part_num = pool_data.bound_part_num
 if(prm_rigidmodel):
     rigid_part_num=rigid1.num
 print("fluid_part_num", fluid_part_num)
 # position info of fluid/boundary (as numpy arrays)
 fluid_part_pos = pool_data.fluid_part_pos
-# fluid_part_pos = rigid1.pos
+if(prm_fluidmodel):
+    fluid_part_pos = model1.pos
 
 # print(fluid_part_pos.dtype)
 # print(fluid_part_pos.shape)#fluidpartnum x 3
@@ -390,7 +394,7 @@ def novis_run(loop):
             # gui.canvas.scene(gui.scene)  # Render the scenet
 
             # if gui.op_save_img and flag_write_img:
-            if flag_write_img:
+            if prm_export and flag_write_img:
                 # gui.window.save_image(prm_exportPath+str(timer)+'.png')
                 flag_write_img = False
                 write_ply(
@@ -455,7 +459,7 @@ def vis_run(loop):
             gui.canvas.scene(gui.scene)  # Render the scene
 
             # if gui.op_save_img and flag_write_img:
-            if flag_write_img:
+            if prm_export and  flag_write_img:
                 gui.window.save_image(prm_exportPath+str(timer)+'.png')
                 flag_write_img = False
                 write_ply(
