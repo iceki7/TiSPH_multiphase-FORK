@@ -20,7 +20,7 @@ rigidname=r"d:\CODE\bunny_0.05.ply"
 prm_large=0
 prm_vis=1
 prm_rigidmodel=0
-prm_fluidmodel=0
+
 prm_exportPath=r"./output/"
 prm_export=0
 # prm_exportPath=r"/w/TiSPH_multiphase/output/"
@@ -106,8 +106,7 @@ fluid_data=PLY_data(
     offset=ti.Vector([0,0,0]))
 fluid_part_num=fluid_data.num
 
-if(prm_fluidmodel):
-    fluid_part_num =model1.num
+
 if(prm_rigidmodel):
     rigid_part_num=rigid1.num
 print("fluid_part_num", fluid_part_num)

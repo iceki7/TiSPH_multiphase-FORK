@@ -20,7 +20,6 @@ rigidname=r"D:\CODE\dataProcessing\propeller.ply"
 prm_large=0
 prm_vis=1
 prm_rigidmodel=0
-prm_fluidmodel=0
 prm_exportPath=r"./output/"
 prm_export=0
 # prm_exportPath=r"/w/TiSPH_multiphase/output/"
@@ -104,16 +103,12 @@ world.set_multiphase(phase_num,[vec3f(0.8,0.2,0),vec3f(0,0.8,0.2),vec3f(0,0,1)],
 pool_data = Squared_pool_3D_data(container_height=3, container_size=4, fluid_height=2, span=world.g_part_size[None], layer = 3)
 # particle number of fluid/boundary
 fluid_part_num = pool_data.fluid_part_num
-if(prm_fluidmodel):
-    fluid_part_num =model1.num
 bound_part_num = pool_data.bound_part_num
 if(prm_rigidmodel):
     rigid_part_num=rigid1.num
 print("fluid_part_num", fluid_part_num)
 # position info of fluid/boundary (as numpy arrays)
 fluid_part_pos = pool_data.fluid_part_pos
-if(prm_fluidmodel):
-    fluid_part_pos = model1.pos
 
 # print(fluid_part_pos.dtype)
 # print(fluid_part_pos.shape)#fluidpartnum x 3

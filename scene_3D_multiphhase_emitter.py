@@ -21,7 +21,7 @@ rigidname=r"d:\CODE\bunny_0.05.ply"
 prm_large=0
 prm_vis=1
 prm_rigidmodel=0
-prm_fluidmodel=0
+
 prm_exportPath=r"./output/"
 prm_export=0
 # prm_exportPath=r"/w/TiSPH_multiphase/output/"
@@ -110,8 +110,7 @@ world.set_multiphase(phase_num,[vec3f(0.8,0.2,0),vec3f(0,0.8,0.2),vec3f(0,0,1)],
 fluid_cube_data = Cube_data(type=Cube_data.FIXED_CELL_SIZE, lb=vec3f(-10.2,0.5,-0.5), rt=vec3f(-1.2, 0.9,0.5), span=world.g_part_size[None]*1.001)
 # particle number of fluid/boundary
 fluid_part_num = fluid_cube_data.num
-if(prm_fluidmodel):
-    fluid_part_num =model1.num
+
 
 #start:找到流体块的最外侧的一层粒子，作为粒子发射位置
 direction_emit_init_pos=0 #0 means left-right,1 means high-low,2 means front-back
@@ -136,8 +135,7 @@ if(prm_rigidmodel):
 print("fluid_part_num", fluid_part_num)
 # position info of fluid/boundary (as numpy arrays)
 
-if(prm_fluidmodel):
-    fluid_part_pos = model1.pos
+
 
 # print(fluid_part_pos.dtype)
 # print(fluid_part_pos.shape)#fluidpartnum x 3
