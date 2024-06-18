@@ -76,9 +76,28 @@ def part_template(part_obj, world, verbose=False):
         acc_pressure=vecxf(part_obj.m_world.g_dim[None]),
     )
 
+    elastic_sph = ti.types.struct(
+        force=vecxf(part_obj.m_world.g_dim[None]),
+        pos_0=vecxf(part_obj.m_world.g_dim[None]),
+        F=matxf(part_obj.m_world.g_dim[None]),
+        L=matxf(part_obj.m_world.g_dim[None]),
+        R=matxf(part_obj.m_world.g_dim[None]),
+        eps=matxf(part_obj.m_world.g_dim[None]),
+        P=matxf(part_obj.m_world.g_dim[None]),
+        link_num=ti.i32,
+        link_num_0=ti.i32,
+        dissolve= ti.f32,
+        U=matxf(part_obj.m_world.g_dim[None]),
+        sigma=matxf(part_obj.m_world.g_dim[None]),
+        V_T=matxf(part_obj.m_world.g_dim[None]),
+        vel_0=vecxf(part_obj.m_world.g_dim[None]),
+        flag=ti.i32,
+    )
+
     part_obj.add_struct("sph", sph)
     part_obj.add_struct("sph_df", sph_df)
     part_obj.add_struct("sph_wc", sph_wc)
+    part_obj.add_struct("elastic_sph", elastic_sph)
     if hasattr(world, 'g_phase_num'):
         part_obj.add_struct("phase", phase, bundle=world.g_phase_num[None])
     part_obj.add_struct("mixture", mixture)

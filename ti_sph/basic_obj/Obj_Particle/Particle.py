@@ -16,9 +16,11 @@ class Particle(Obj):
         part_num: int,
         part_size: ti.template(),
         is_dynamic: bool = True,
+        type:int = 0
     ):
         self.m_world = None
-        self.m_id = None    
+        self.m_id = None   
+        self.m_type = type
         super().__init__(is_dynamic)
 
         if (part_num <= 0):
@@ -40,6 +42,7 @@ class Particle(Obj):
         self.m_solver_wcsph = None
         self.m_solver_ism = None
         self.m_solver_JL21 = None
+        self.m_solver_isph = None
 
         # data structure
         self.m_attr_list = {}
@@ -102,6 +105,7 @@ class Particle(Obj):
     add_solver_wcsph = solvers.add_solver_wcsph
     add_solver_ism = solvers.add_solver_ism
     add_solver_JL21 = solvers.add_solver_JL21
+    add_solver_isph = solvers.add_solver_isph
     
     # TODO
     def delete_outbounded_particles(self):

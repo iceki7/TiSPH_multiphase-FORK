@@ -9,6 +9,7 @@ class Neighb_search:
         # self.attach_to_obj(obj)
         self.neighb_cell = Neighb_cell(obj)
         self.neighb_pool = Neighb_pool(obj, max_neighb_num)
+        self.neighb_pool_0 = Neighb_pool(obj, max_neighb_num)
         self.update_self()
 
     # def attach_to_obj(self, obj):

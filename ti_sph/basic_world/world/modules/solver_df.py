@@ -190,6 +190,9 @@ def step_dfsph_div(self):
             part_obj.m_solver_df.compute_delta_density()
 
             for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
+                #如果都是沙子就不做内部的dfsph
+                if part_obj.m_type==2 and neighb_obj.m_type==2:
+                    continue
                 part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_update_delta_density_from_vel_adv)
             part_obj.m_solver_df.ReLU_delta_density()
             part_obj.m_solver_df.update_df_compressible_ratio()
@@ -206,6 +209,9 @@ def step_dfsph_div(self):
         for part_obj in self.df_solver_list:
             if part_obj.m_is_dynamic:
                 for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
+                    #如果都是沙子就不做内部的dfsph
+                    if part_obj.m_type==2 and neighb_obj.m_type==2:
+                        continue
                     part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_df_update_vel_adv_from_kappa_div)
         
         if all(self.df_divergence_free_states):
@@ -247,6 +253,9 @@ def step_vfsph_incomp(self, update_vel=True):
             part_obj.m_solver_df.compute_delta_compression_ratio()
 
             for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
+                #如果都是沙子就不做内部的dfsph
+                if part_obj.m_type==2 and neighb_obj.m_type==2:
+                    continue
                 part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_update_delta_compression_ratio_from_vel_adv)
             part_obj.m_solver_df.ReLU_delta_compression_ratio()
             part_obj.m_solver_df.update_vf_compressible_ratio()
@@ -259,6 +268,9 @@ def step_vfsph_incomp(self, update_vel=True):
             if part_obj.m_is_dynamic:
                 part_obj.m_solver_df.compute_kappa_incomp_from_delta_compression_ratio()
                 for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
+                    #如果都是沙子就不做内部的dfsph
+                    if part_obj.m_type==2 and neighb_obj.m_type==2:
+                        continue
                     part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_vf_update_vel_adv_from_kappa_incomp)
             
         if all(self.df_incompressible_states):

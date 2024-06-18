@@ -68,8 +68,8 @@ class World:
         print('world.g_phase_num\n', self.g_phase_num[None])
         print('world.g_phase_color\n', self.g_phase_color.to_numpy())
         print('world.g_phase_rest_density\n', self.g_phase_rest_density.to_numpy())
-    def add_part_obj(self, part_num, is_dynamic, size: ti.template()):
-        obj = Particle(part_num, size, is_dynamic)
+    def add_part_obj(self, part_num, is_dynamic, size: ti.template(),type=0):
+        obj = Particle(part_num, size, is_dynamic,type)
         self.part_obj_list.append(obj)
         obj.set_id(self.part_obj_list.index(obj))
         obj.set_world(self)
