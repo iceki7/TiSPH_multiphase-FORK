@@ -6,6 +6,7 @@ from ....basic_solvers.Solver_wcsph import WCSPH_solver
 from ....basic_solvers.Solver_ism import Implicit_mixture_solver
 from ....basic_solvers.Solver_JL21 import JL21_mixture_solver
 from ....basic_solvers.Solver_isph import ISPH_Elastic_solver
+from ....basic_solvers.Solver_porous import Porous_multi_solver
 
 def add_solver_adv(self):
     self.m_solver_adv = Adv_slover(self)
@@ -25,5 +26,8 @@ def add_solver_ism(self, Cd, Cf, k_vis_inter, k_vis_inner):
 def add_solver_JL21(self, kd, Cf, k_vis):
     self.m_solver_JL21 = JL21_mixture_solver(self, kd, Cf, k_vis, self.m_world)
 
-def add_solver_isph(self):
-    self.m_solver_isph = ISPH_Elastic_solver(self,self.m_world)
+def add_solver_isph(self,K=1e5, G=1e5):
+    self.m_solver_isph = ISPH_Elastic_solver(self,self.m_world,K, G)
+
+def add_solver_porous(self,elastic_part, absorption_constant, porosity, rest_pore_pressure, permeability, capillary, pore_parm,kinematic_viscosity_fluid):
+    self.m_solver_porous = Porous_multi_solver(self,elastic_part, absorption_constant, porosity, rest_pore_pressure, permeability, capillary, pore_parm,kinematic_viscosity_fluid,self.m_world)

@@ -15,10 +15,16 @@ class ISPH_Elastic_solver(SPH_solver):
     def __init__(self, obj: Particle, world,K=1e5, G=1e5):
         
         super().__init__(obj)
-        self.K = ti.field(ti.f32, ())
-        self.G = ti.field(ti.f32, ())
-        self.K[None] = float(K)
-        self.G[None] = float(G)
+        self.K_0 = ti.field(ti.f32, ())
+        self.G_0 = ti.field(ti.f32, ())     
+        self.miu_0 = ti.field(ti.f32, ())
+        self.lambda_0 = ti.field(ti.f32, ())   
+    
+        self.K_0[None] = float(K)
+        self.G_0[None] = float(G)
+        self.miu_0[None] = self.G_0[None]
+        self.lambda_0[None] = self.K_0[None]-2*self.miu_0[None]/3
+
         self.world = world
 
     
@@ -45,6 +51,8 @@ class ISPH_Elastic_solver(SPH_solver):
     @ti.kernel
     def set_link_num_0(self):
         for part_id in range(self.obj.ti_get_stack_top()[None]):            
+            self.obj.elastic_sph.K[part_id] = self.K_0[None]
+            self.obj.elastic_sph.G[part_id] = self.G_0[None]
             self.obj.elastic_sph.link_num_0[part_id] = self.obj.elastic_sph.link_num[part_id]             
                       
 
@@ -56,8 +64,9 @@ class ISPH_Elastic_solver(SPH_solver):
 
     @ti.kernel
     def init_neighbor_flag(self):
-        for part_id in range(self.obj.ti_get_stack_top()[None]):            
+        for part_id in range(self.obj.ti_get_stack_top()[None]): 
             self.obj.elastic_sph[part_id].flag=1 
+            # self.obj.rgb[part_id] = vec3f(0.9,0.9,0.05)
 
     @ti.func
     def inloop_set_neighbor_flag(self, part_id: ti.i32, neighb_part_id: ti.i32, neighb_part_shift: ti.i32, neighb_pool:ti.template(),neighb_obj:ti.template()):
@@ -68,8 +77,8 @@ class ISPH_Elastic_solver(SPH_solver):
     def regularize_compression_ratio(self):
         for part_id in range(self.obj.ti_get_stack_top()[None]):   
             if self.obj.elastic_sph[part_id].flag==1:
-                self.obj.sph[part_id].compression_ratio=1      
-
+                self.obj.sph[part_id].compression_ratio=1     
+                # self.obj.rgb[part_id] = ti.Vector([0.9, 0.1, 0])            
     
     @ti.func
     def inloop_compute_F(self, part_id: ti.i32, neighb_part_id: ti.i32, neighb_part_shift: ti.i32, neighb_pool_0:ti.template(),neighb_obj:ti.template()):
@@ -117,22 +126,26 @@ class ISPH_Elastic_solver(SPH_solver):
     @ti.kernel
     def compute_Z_projection(self):
         for part_id in range(self.obj.ti_get_stack_top()[None]):    
+            F_E_origin=self.obj.elastic_sph[part_id].F
             U     = self.obj.elastic_sph[part_id].U
             sigma = self.obj.elastic_sph[part_id].sigma
             V_T   = self.obj.elastic_sph[part_id].V_T
-            alpha_p=0.5
+            alpha_p=1
             d=self.obj.m_world.g_dim[None]
             I = ti.Matrix.identity(dt=ti.f32, n=self.obj.elastic_sph[0].F.n)
             epsilon=I*ti.log(sigma)  
             # print("epsilon:",epsilon)          
             epsilon_hat=epsilon-(epsilon.trace()/d)*I
-            miu0=self.G[None]
-            lambda0=self.K[None]-2*miu0/3
-            delta_gamma=epsilon_hat.norm()+((d*lambda0+2*miu0)/(2*miu0))*epsilon.trace()*alpha_p
+            miu_t=self.obj.elastic_sph.G[part_id]
+            lambda_t=self.obj.elastic_sph.K[part_id]-2*miu_t/3
+            delta_gamma=epsilon_hat.norm()+((d*lambda_t+2*miu_t)/(2*miu_t))*epsilon.trace()*alpha_p
             # print("delta_gamma",delta_gamma)
-            # print("delta_gamma",delta_gamma,"epsilon_hat:", epsilon_hat, "lambda0:", lambda0, "miu0:", miu0, "epsilon:", epsilon, "alpha_p:", alpha_p)
+            # print("delta_gamma",delta_gamma,"epsilon_hat:", epsilon_hat, "lambda_t:", lambda_t, "miu_t:", miu_t, "epsilon:", epsilon, "alpha_p:", alpha_p)
+            # C_cohesion=(1-self.obj.porous_multi_fluid.alpha_sum[part_id])*7.5e-3
             # case1:delta_gamma<=0应力已经在屈服面内，直接返回F
-            if delta_gamma<=0:
+            # C_cohesion=9e-1*min(max(1-self.obj.porous_multi_fluid.Sr[part_id], 0.0), 1.0)
+            C_cohesion=0
+            if delta_gamma<=C_cohesion:
                 # print("case1")
                 self.obj.rgb[part_id]=vec3f(0.1,0.9,0.1)
                 continue
@@ -149,6 +162,20 @@ class ISPH_Elastic_solver(SPH_solver):
                 self.obj.elastic_sph[part_id].F=U @ e_H @ V_T
                 self.obj.rgb[part_id]=vec3f(0.1,0.1,0.9)
                 # print("case3"," H:",H,"e_H",e_H)
+            ##############################
+            # print("计算塑性应变")       
+            #计算塑性应变 并因此改变拉梅常数
+            # F_E_new=self.obj.elastic_sph[part_id].F
+            # F_P=F_E_new.inverse() @ F_E_origin
+            # # print("F_E_origin",F_E_origin,"F_E_new",F_E_new,"F_P",F_P)   
+            # xi=10
+            # miu_next=self.miu_0[None]*ti.exp(xi*(1-F_P.determinant()))
+            # lambda_next=self.lambda_0[None]*ti.exp(xi*(1-F_P.determinant()))
+            # self.obj.elastic_sph.G[part_id]= miu_next
+            # self.obj.elastic_sph.K[part_id]=lambda_next+2*miu_next/3
+            # print("miu_t",miu_t,"lambda_t",lambda_t,"miu_next",miu_next,"lambda_next",lambda_next)   
+
+
 
     @ti.kernel
     def clamp_singular(self):
@@ -221,8 +248,8 @@ class ISPH_Elastic_solver(SPH_solver):
     def compute_P(self):
         I = ti.Matrix.identity(dt=ti.f32, n=self.obj.elastic_sph[0].F.n)
         for part_id in range(self.obj.ti_get_stack_top()[None]):        
-            self.obj.elastic_sph[part_id].P = (2 * self.G[None] * self.obj.elastic_sph[part_id].eps) + (
-                (self.K[None] - (2 / 3 * self.G[None])) * self.obj.elastic_sph[part_id].eps.trace() * I
+            self.obj.elastic_sph[part_id].P = (2 * self.obj.elastic_sph.G[part_id] * self.obj.elastic_sph[part_id].eps) + (
+                (self.obj.elastic_sph.K[part_id] - (2 / 3 * self.obj.elastic_sph.G[part_id])) * self.obj.elastic_sph[part_id].eps.trace() * I
             )
             #G = miu, K=lambda+2*miu/3
             #miu=G, lambda=k-2*miu/3

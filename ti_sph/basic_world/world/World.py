@@ -83,6 +83,14 @@ class World:
         solver_wcsph.init_solver_wcsph(self)
         cfl.init_cfl(self)
 
+    def enhance_fluid_boundary_coupling_start(self,elastic_part):
+        self.sph_solver_list.remove(elastic_part)
+        self.df_solver_list.remove(elastic_part)
+
+    def enhance_fluid_boundary_coupling_end(self,elastic_part):
+        self.df_solver_list.append(elastic_part)
+        self.sph_solver_list.append(elastic_part)
+
     # Functions: neighbour search
     update_pos_in_neighb_search = neighb_search.update_pos_in_neighb_search
     update_neighbs = neighb_search.update_neighbs
@@ -110,6 +118,7 @@ class World:
     step_dfsph_div = solver_df.step_dfsph_div
     step_vfsph_incomp = solver_df.step_vfsph_incomp
     step_vfsph_div = solver_df.step_vfsph_div
+    eliminate_interior_df = solver_df.eliminate_interior_df
     
     # Functions: WCSPH
     step_wcsph_add_acc_pressure = solver_wcsph.step_wcsph_add_acc_pressure

@@ -2,6 +2,7 @@ import taichi as ti
 import numpy as np
 from typing import List
 from ....basic_obj.Obj_Particle import Particle
+from ....basic_solvers.sph_funcs import *
 
 from ....basic_solvers.Solver_df import DF_solver
 
@@ -19,7 +20,8 @@ def step_df_compute_alpha(self):
 
 def step_df_compute_beta(self):
     for part_obj in self.df_solver_list:
-        part_obj.m_solver_df.compute_beta(part_obj.m_neighb_search.neighb_pool)
+        # part_obj.m_solver_df.compute_beta(part_obj.m_neighb_search.neighb_pool)
+        part_obj.m_solver_df.compute_beta_new(self.df_solver_list,part_obj.m_neighb_search.neighb_pool)
 
 def step_df_incomp(self):
     for part_obj in self.df_solver_list:
@@ -190,9 +192,6 @@ def step_dfsph_div(self):
             part_obj.m_solver_df.compute_delta_density()
 
             for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
-                #如果都是沙子就不做内部的dfsph
-                if part_obj.m_type==2 and neighb_obj.m_type==2:
-                    continue
                 part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_update_delta_density_from_vel_adv)
             part_obj.m_solver_df.ReLU_delta_density()
             part_obj.m_solver_df.update_df_compressible_ratio()
@@ -209,9 +208,6 @@ def step_dfsph_div(self):
         for part_obj in self.df_solver_list:
             if part_obj.m_is_dynamic:
                 for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
-                    #如果都是沙子就不做内部的dfsph
-                    if part_obj.m_type==2 and neighb_obj.m_type==2:
-                        continue
                     part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_df_update_vel_adv_from_kappa_div)
         
         if all(self.df_divergence_free_states):
@@ -241,7 +237,8 @@ def step_vfsph_incomp(self, update_vel=True):
         if part_obj.m_is_dynamic and part_obj.m_solver_df.incomp_warm_start:
             part_obj.clear(part_obj.sph_df.alpha_2)
             for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
-                part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_vf_update_vel_adv_from_kappa_incomp)
+                if neighb_obj in self.df_solver_list:     
+                    part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_vf_update_vel_adv_from_kappa_incomp)
 
     while True:
         for part_obj in self.df_solver_list:
@@ -253,10 +250,8 @@ def step_vfsph_incomp(self, update_vel=True):
             part_obj.m_solver_df.compute_delta_compression_ratio()
 
             for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
-                #如果都是沙子就不做内部的dfsph
-                if part_obj.m_type==2 and neighb_obj.m_type==2:
-                    continue
-                part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_update_delta_compression_ratio_from_vel_adv)
+                if neighb_obj in self.df_solver_list:     
+                    part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_update_delta_compression_ratio_from_vel_adv)
             part_obj.m_solver_df.ReLU_delta_compression_ratio()
             part_obj.m_solver_df.update_vf_compressible_ratio()
 
@@ -268,17 +263,16 @@ def step_vfsph_incomp(self, update_vel=True):
             if part_obj.m_is_dynamic:
                 part_obj.m_solver_df.compute_kappa_incomp_from_delta_compression_ratio()
                 for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
-                    #如果都是沙子就不做内部的dfsph
-                    if part_obj.m_type==2 and neighb_obj.m_type==2:
-                        continue
-                    part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_vf_update_vel_adv_from_kappa_incomp)
+                    if neighb_obj in self.df_solver_list:     
+                    # part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_vf_update_vel_adv_from_kappa_incomp)
+                        part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_df_update_vel_adv_from_kappa_incomp)
             
         if all(self.df_incompressible_states):
             break
 
-    for part_obj in self.df_solver_list:
-        if part_obj.m_is_dynamic:
-            part_obj.m_solver_df.log_kappa_incomp()
+    # for part_obj in self.df_solver_list:
+    #     if part_obj.m_is_dynamic:
+    #         part_obj.m_solver_df.log_kappa_incomp()
 
     if update_vel:
         for part_obj in self.df_solver_list:
@@ -323,18 +317,27 @@ def step_vfsph_div(self, update_vel=True):
 
         for part_obj in self.df_solver_list:
             if part_obj.m_is_dynamic:
-                part_obj.m_solver_df.compute_kappa_div_from_delta_compression_ratio()
+                # part_obj.m_solver_df.compute_kappa_div_from_delta_compression_ratio()
                 for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
-                    part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_vf_update_vel_adv_from_kappa_div)
+                    # part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_vf_update_vel_adv_from_kappa_div)
+                    part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_df.inloop_df_update_vel_adv_from_kappa_incomp)
             
         if all(self.df_divergence_free_states):
             break
 
-    for part_obj in self.df_solver_list:
-        if part_obj.m_is_dynamic:
-            part_obj.m_solver_df.log_kappa_div()
+    # for part_obj in self.df_solver_list:
+    #     if part_obj.m_is_dynamic:
+    #         part_obj.m_solver_df.log_kappa_div()
 
     if update_vel:
         for part_obj in self.df_solver_list:
             if part_obj.m_is_dynamic:
                 part_obj.m_solver_df.update_vel(part_obj.vel)
+
+# 消除沙子内部的df
+def eliminate_interior_df(self):
+    for part_obj in self.df_solver_list:
+        if part_obj.m_type==2:           
+            for neighb_obj in part_obj.m_neighb_search.neighb_pool.neighb_obj_list:
+                part_obj.m_solver_df.loop_neighb(part_obj.m_neighb_search.neighb_pool, neighb_obj, part_obj.m_solver_isph.inloop_set_neighbor_flag)           
+                

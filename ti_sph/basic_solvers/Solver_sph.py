@@ -90,6 +90,12 @@ class SPH_solver:
             ''' Compute Compression Ratio '''
             self.loop_neighb(neighb_pool, neighb_obj, self.inloop_accumulate_compression_ratio)
     
+    def sph_compute_compression_ratio_new(self,sph_solver_list, neighb_pool):
+        self.obj.clear(self.obj.sph.compression_ratio)
+        for neighb_obj in sph_solver_list:
+            ''' Compute Compression Ratio '''
+            self.loop_neighb(neighb_pool, neighb_obj, self.inloop_accumulate_compression_ratio)        
+
     def sph_avg_velocity(self, neighb_pool):
         self.obj.clear(self.obj.vel)
         for neighb_obj in neighb_pool.neighb_obj_list:

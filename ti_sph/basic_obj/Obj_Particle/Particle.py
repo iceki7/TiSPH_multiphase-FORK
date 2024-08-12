@@ -106,6 +106,7 @@ class Particle(Obj):
     add_solver_ism = solvers.add_solver_ism
     add_solver_JL21 = solvers.add_solver_JL21
     add_solver_isph = solvers.add_solver_isph
+    add_solver_porous = solvers.add_solver_porous
     
     # TODO
     def delete_outbounded_particles(self):

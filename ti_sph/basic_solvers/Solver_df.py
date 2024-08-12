@@ -153,20 +153,40 @@ class DF_solver(SPH_solver):
         cached_dist = neighb_pool.cached_neighb_attributes[neighb_part_shift].dist
         cached_grad_W = neighb_pool.cached_neighb_attributes[neighb_part_shift].grad_W
         if bigger_than_zero(cached_dist):
-            self.obj.sph_df[part_id].vel_adv -= self.dt[None] * \
-                (neighb_obj.mass[neighb_part_id] / self.obj.mass[part_id] * self.obj.volume[part_id] * self.obj.sph_df[part_id].kappa_incomp + 
-                 neighb_obj.volume[neighb_part_id] * neighb_obj.sph_df[neighb_part_id].kappa_incomp) \
-            * cached_grad_W
-    
+            # 为了避免将volume作为除数（加入多孔介质机制后耦合时的固体volume可能为0）
+            self.obj.sph_df[part_id].vel_adv -= (1/self.dt[None]) * cached_grad_W\
+                / self.obj.mass[part_id] *(self.obj.sph_df[part_id].delta_compression_ratio*neighb_obj.volume[neighb_part_id] / self.obj.sph_df[part_id].alpha + 
+                 neighb_obj.sph_df[neighb_part_id].delta_compression_ratio*self.obj.volume[part_id]/neighb_obj.sph_df[neighb_part_id].alpha) 
+            
     @ti.func
     def inloop_df_update_vel_adv_from_kappa_div(self, part_id: ti.i32, neighb_part_id: ti.i32, neighb_part_shift: ti.i32, neighb_pool:ti.template(), neighb_obj:ti.template()):
         cached_dist = neighb_pool.cached_neighb_attributes[neighb_part_shift].dist
         cached_grad_W = neighb_pool.cached_neighb_attributes[neighb_part_shift].grad_W
         if bigger_than_zero(cached_dist):
-            self.obj.sph_df[part_id].vel_adv -= self.dt[None] * \
-                (neighb_obj.mass[neighb_part_id] / self.obj.mass[part_id] * self.obj.volume[part_id] * self.obj.sph_df[part_id].kappa_div + 
-                 neighb_obj.volume[neighb_part_id] * neighb_obj.sph_df[neighb_part_id].kappa_div) \
-            * cached_grad_W
+            # 为了避免将volume作为除数（加入多孔介质机制后耦合时的固体volume可能为0）
+            self.obj.sph_df[part_id].vel_adv -= (1/self.dt[None]) * cached_grad_W\
+                / self.obj.mass[part_id] *(self.obj.sph_df[part_id].delta_compression_ratio*neighb_obj.volume[neighb_part_id] / self.obj.sph_df[part_id].alpha + 
+                 neighb_obj.sph_df[neighb_part_id].delta_compression_ratio*self.obj.volume[part_id]/neighb_obj.sph_df[neighb_part_id].alpha) 
+
+    # @ti.func
+    # def inloop_df_update_vel_adv_from_kappa_incomp(self, part_id: ti.i32, neighb_part_id: ti.i32, neighb_part_shift: ti.i32, neighb_pool:ti.template(), neighb_obj:ti.template()):
+    #     cached_dist = neighb_pool.cached_neighb_attributes[neighb_part_shift].dist
+    #     cached_grad_W = neighb_pool.cached_neighb_attributes[neighb_part_shift].grad_W
+    #     if bigger_than_zero(cached_dist):
+    #         self.obj.sph_df[part_id].vel_adv -= self.dt[None] * \
+    #             (neighb_obj.mass[neighb_part_id] / self.obj.mass[part_id] * self.obj.volume[part_id] * self.obj.sph_df[part_id].kappa_incomp + 
+    #              neighb_obj.volume[neighb_part_id] * neighb_obj.sph_df[neighb_part_id].kappa_incomp) \
+    #         * cached_grad_W
+    
+    # @ti.func
+    # def inloop_df_update_vel_adv_from_kappa_div(self, part_id: ti.i32, neighb_part_id: ti.i32, neighb_part_shift: ti.i32, neighb_pool:ti.template(), neighb_obj:ti.template()):
+    #     cached_dist = neighb_pool.cached_neighb_attributes[neighb_part_shift].dist
+    #     cached_grad_W = neighb_pool.cached_neighb_attributes[neighb_part_shift].grad_W
+    #     if bigger_than_zero(cached_dist):
+    #         self.obj.sph_df[part_id].vel_adv -= self.dt[None] * \
+    #             (neighb_obj.mass[neighb_part_id] / self.obj.mass[part_id] * self.obj.volume[part_id] * self.obj.sph_df[part_id].kappa_div + 
+    #              neighb_obj.volume[neighb_part_id] * neighb_obj.sph_df[neighb_part_id].kappa_div) \
+    #         * cached_grad_W
 
     @ti.func
     def inloop_vf_update_vel_adv_from_kappa_incomp(self, part_id: ti.i32, neighb_part_id: ti.i32, neighb_part_shift: ti.i32, neighb_pool:ti.template(), neighb_obj:ti.template()):
@@ -256,6 +276,24 @@ class DF_solver(SPH_solver):
         ''' Compute Alpha '''
         self.ker_compute_alpha()     
 
+    def compute_beta_new(self,df_solver_list:ti.template(),neighb_pool:ti.template()):
+    
+        self.obj.clear(self.obj.sph_df.alpha_1)
+        self.obj.clear(self.obj.sph_df.alpha_2)
+
+        # 加入多孔介质耦合机制后，需要单独增加液体和边界的耦合避免穿透，所以进行了修改
+        for neighb_obj in df_solver_list:
+            ''' Compute Alpha_1, Alpha_2 ''' 
+            if self.obj.m_is_dynamic:
+                self.loop_neighb(neighb_pool, neighb_obj, self.inloop_accumulate_beta_1)
+                if neighb_obj.m_is_dynamic:
+                    self.loop_neighb(neighb_pool, neighb_obj, self.inloop_accumulate_beta_2)
+            else: 
+                if neighb_obj.m_is_dynamic:
+                    self.loop_neighb(neighb_pool, neighb_obj, self.inloop_accumulate_beta_2)
+
+        ''' Compute Alpha '''
+        self.ker_compute_alpha()        
 
 
 

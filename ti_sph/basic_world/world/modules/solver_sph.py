@@ -18,4 +18,5 @@ def step_sph_compute_number_density(self):
 
 def step_sph_compute_compression_ratio(self):
     for part_obj in self.sph_solver_list:
-        part_obj.m_solver_sph.sph_compute_compression_ratio(part_obj.m_neighb_search.neighb_pool)
+        # part_obj.m_solver_sph.sph_compute_compression_ratio(part_obj.m_neighb_search.neighb_pool)
+        part_obj.m_solver_sph.sph_compute_compression_ratio_new(self.sph_solver_list,part_obj.m_neighb_search.neighb_pool)

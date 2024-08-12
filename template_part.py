@@ -60,7 +60,7 @@ def part_template(part_obj, world, verbose=False):
     )
     sph_wc = ti.types.struct(
         B=ti.f32,
-    )
+    )    
 
     phase = ti.types.struct(
         val_frac=ti.f32,
@@ -92,15 +92,39 @@ def part_template(part_obj, world, verbose=False):
         V_T=matxf(part_obj.m_world.g_dim[None]),
         vel_0=vecxf(part_obj.m_world.g_dim[None]),
         flag=ti.i32,
+        K=ti.f32,
+        G=ti.f32,
+    )
+
+    porous_multi_fluid=ti.types.struct(
+        outer_pore_pressure=vecxf(part_obj.m_world.g_phase_num[None]),#外孔压             
+        Nf=ti.f32,
+        SumNWf=ti.f32,
+        delta_volume=ti.f32,
+        alpha_last=ti.f32,
+        solid_beta=vecxf(part_obj.m_world.g_phase_num[None]),#固体粒子的虚相（类似于饱和度）
+        Sr=ti.f32,
+        fluid_alpha=vecxf(part_obj.m_world.g_phase_num[None]),
+        fluid_beta=vecxf(part_obj.m_world.g_phase_num[None]),
+        solid_pore_pressure=ti.f32, 
+        Darcy_flux=ti.types.matrix(part_obj.m_world.g_phase_num[None], part_obj.m_world.g_dim[None], ti.f32),# 相k在固体内外的体积分数      
+        grad_Darcy_flux=vecxf(part_obj.m_world.g_phase_num[None]),
+        volume_frac_temp=vecxf(part_obj.m_world.g_phase_num[None]),
+        alpha_sum=ti.f32, 
+        solid_strain=ti.f32,
+        grad_pore_pressure=ti.types.matrix(part_obj.m_world.g_phase_num[None], part_obj.m_world.g_dim[None], ti.f32),# 相k在固体内外的体积分数      
     )
 
     part_obj.add_struct("sph", sph)
     part_obj.add_struct("sph_df", sph_df)
     part_obj.add_struct("sph_wc", sph_wc)
-    part_obj.add_struct("elastic_sph", elastic_sph)
+    if part_obj.m_type==2:# 是固体
+        part_obj.add_struct("elastic_sph", elastic_sph)
     if hasattr(world, 'g_phase_num'):
-        part_obj.add_struct("phase", phase, bundle=world.g_phase_num[None])
-    part_obj.add_struct("mixture", mixture)
+        if part_obj.m_type==1:# 是流体
+            part_obj.add_struct("phase", phase, bundle=world.g_phase_num[None])
+            part_obj.add_struct("porous_multi_fluid", porous_multi_fluid)     
+            part_obj.add_struct("mixture", mixture)
 
     if verbose:
         part_obj.verbose_attrs("fluid_part")
